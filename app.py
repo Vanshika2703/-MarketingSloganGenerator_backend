@@ -37,7 +37,6 @@ def top_k_top_p_filtering(logits, top_k=0, top_p=0.0, filter_value=-float('Inf')
     return logits
 
 
-# From HuggingFace, adapted to work with the context/slogan separation:
 def sample_sequence(model, length, context, segments_tokens=None, num_samples=1, temperature=1, top_k=0, top_p=0.0, repetition_penalty=1.0,
                     device='cpu'):
     context = torch.tensor(context, dtype=torch.long, device=device)
@@ -51,14 +50,9 @@ def sample_sequence(model, length, context, segments_tokens=None, num_samples=1,
             if segments_tokens != None:
               inputs['token_type_ids'] = torch.tensor(segments_tokens[:generated.shape[1]]).unsqueeze(0).repeat(num_samples, 1)
 
-
-            outputs = model(**inputs)  # Note: we could also use 'past' with GPT-2/Transfo-XL/XLNet/CTRL (cached hidden-states)
+            outputs = model(**inputs)
             next_token_logits = outputs[0][:, -1, :] / (temperature if temperature > 0 else 1.)
 
-            # for i in range(num_samples):
-            #     for _ in set(generated[7].tolist()):
-            #         next_token_logits[i, _] /= repetition_penalty
-                
             filtered_logits = top_k_top_p_filtering(next_token_logits, top_k=top_k, top_p=top_p)
             if temperature == 0: # greedy sampling:
                 next_token = torch.argmax(filtered_logits, dim=-1).unsqueeze(-1)
@@ -67,27 +61,42 @@ def sample_sequence(model, length, context, segments_tokens=None, num_samples=1,
             generated = torch.cat((generated, next_token), dim=1)
     return generated
 
-context = "Lady, women's perfume"
 
-context_tkn = tokenizer.additional_special_tokens_ids[0]
-slogan_tkn = tokenizer.additional_special_tokens_ids[1]
+@app.route("/predict", methods=["POST"])
+def main():
+    try:
+        product = request.form.get('product')
+        description = int(request.form.get('description'))
 
-input_ids = [context_tkn] + tokenizer.encode(context)
+    except Exception as e:
+        return jsonify({'message': 'Invalid request'}), 500
+    
+    context = product+", "+description
+    context_tkn = tokenizer.additional_special_tokens_ids[0]
+    slogan_tkn = tokenizer.additional_special_tokens_ids[1]
 
-segments = [slogan_tkn] * 64
-segments[:len(input_ids)] = [context_tkn] * len(input_ids)
+    input_ids = [context_tkn] + tokenizer.encode(context)
 
-input_ids += [slogan_tkn]
+    segments = [slogan_tkn] * 64
+    segments[:len(input_ids)] = [context_tkn] * len(input_ids)
 
-# Move the model back to the CPU for inference:
-model.to(torch.device('cpu'))
+    input_ids += [slogan_tkn]
 
-# Generate 20 samples of max length 20
-generated = sample_sequence(model, length=30, context=input_ids, segments_tokens=segments, num_samples=20)
+    # Move the model back to the CPU for inference:
+    model.to(torch.device('cpu'))
 
-print('\n\n--- Generated Slogans ---\n')
+    generated = sample_sequence(model, length=30, context=input_ids, segments_tokens=segments, num_samples=20)
+    
+    slogans = ""
 
-for g in generated:
-  slogan = tokenizer.decode(g)
-  slogan = slogan.split('<|endoftext|>')[0].split('<slogan>')[1]
-  print(slogan)
+    for g in generated:
+        slogan = tokenizer.decode(g)
+        slogan = slogan.split('<|endoftext|>')[0].split('<slogan>')[1]
+        slogans = slogans + slogan + "\r\n"
+
+
+    return slogans
+
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port="5000")
