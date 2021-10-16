@@ -1,0 +1,50 @@
+openapi: 3.0.1
+
+info:
+  title: GPT-2 PrideAndPrejudice
+  version: 1.0.0
+  contact:
+    name: Vanshika
+  description: |
+    Generate Marketing Slogans using GPT-2 model
+    ---
+          How to use:
+          * First, Fill what the product name. This will be base of Pride and Prejudice fiction.
+          * And then, Fill number in length. Text is created as long as "length". I recommend between 100 and 300.
+          * If length is so big, generate time will be long.
+    ---
+servers:
+  - url: https://main-ainize-tutorial-server-scy6500.endpoint.ainize.ai
+
+paths:
+  /predict:
+    post:
+      requestBody:
+        required: true
+        description: |
+          This request will generate Pride and Prejudice fiction.
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                base_text:
+                  description: "Your Pride and Prejudice fiction base."
+                length:
+                  description: "The length of the text"
+              required:
+                - base_text
+                - length
+      responses:
+        '200':
+          description: "Successful Response"
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          description: "Bad Request Error"
+        '429':
+          description: "Too many requests"
+        '500':
+          description: "Server-side Error"
