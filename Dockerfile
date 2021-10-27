@@ -1,6 +1,6 @@
-FROM vanshika27/slogan_generator:tag
+FROM vanshika27/slogan_generator:latest
 
-WORKDIR /workspace
+WORKDIR /app
 
 RUN pip install flask transformers torch tqdm
 
