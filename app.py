@@ -66,7 +66,7 @@ def sample_sequence(model, length, context, segments_tokens=None, num_samples=1,
 def main():
     try:
         product = request.form.get('product')
-        description = int(request.form.get('description'))
+        description = request.form.get('description')
 
     except Exception as e:
         return jsonify({'message': 'Invalid request'}), 500
@@ -99,4 +99,4 @@ def main():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port="5000")
+    app.run(host="0.0.0.0", port="8000")
